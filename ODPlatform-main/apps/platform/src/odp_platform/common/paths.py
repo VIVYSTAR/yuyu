@@ -1,0 +1,216 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
+# @FileName  :paths.py
+# @Time      :2026/5/18 11:53:15
+# @Author    :雨霓同学
+# @Project   :ODPlatform
+# @Function  :
+from pathlib import Path
+from typing import List, Tuple
+
+WORKSPACE_MARKER: str = ".odp-workspace"
+
+def _find_workspace_root(
+        start: Path,
+        markers: Tuple[str, ...] = (WORKSPACE_MARKER, ),
+) -> Path:
+    """
+    从start开始沿着父目录向上查找，返回包含任一marker文件的目录
+    :param start: 起始路径
+    :param markers: 一组marker文件名，只要存在一个就视为找到
+    :return: workspace根目录
+    :raise: 一直爬到文件系统系统都没找到，返回一个FileNotFoundError
+    """
+    current = start.resolve()
+    if current.is_file():
+        current = current.parent
+
+    for parent in [current.parent, *current.parents]:
+        for marker in markers:
+            if (parent / marker).exists():
+                return parent
+    raise FileNotFoundError(f"No {markers} found in {start}, 请确认仓库的根目录是否存在{WORKSPACE_MARKER}文件")
+
+# 计算一下ROOT_DIR根目录
+ROOT_DIR: Path = _find_workspace_root(Path(__file__))
+
+# 端代码目录APP_DIR(platform这个根)
+APP_DIR: Path = ROOT_DIR / "apps" / "platform"
+
+# 共享资产(ROOT_DIR下，所有端都可以访问的文件)
+DATA_DIR: Path = ROOT_DIR / "data"
+MODELS_DIR: Path = ROOT_DIR / "models"
+RUNS_DIR : Path = ROOT_DIR / "runs"
+
+# 模型有子目录
+PRETRAINED_MODELS_DIR: Path = MODELS_DIR / "pretrained"
+CHECKPOINTS_DIR: Path = MODELS_DIR / "checkpoints"
+
+# 数据集子目录
+RAW_DATA_DIR: Path = DATA_DIR / "raw"
+
+TRAIN_DIR : Path = DATA_DIR / "train"
+TEST_DIR : Path = DATA_DIR / "test"
+VAL_DIR : Path = DATA_DIR / "val"
+
+TRAIN_IMAGES_DIR: Path = TRAIN_DIR / "images"
+TEST_IMAGES_DIR: Path = TEST_DIR / "images"
+VAL_IMAGES_DIR: Path = VAL_DIR / "images"
+
+TRAIN_LABELS_DIR: Path = TRAIN_DIR / "labels"
+TEST_LABELS_DIR: Path = TEST_DIR / "labels"
+VAL_LABELS_DIR: Path = VAL_DIR / "labels"
+
+# 【端私有资产】只属于platform这个端的资产文件
+CONFIGS_DIR: Path = APP_DIR / "configs"
+LOGGING_DIR: Path = APP_DIR / "logging"
+UNIT_TEST_DIR: Path = APP_DIR / "tests"
+
+# 顶层的文档目录[共享给所有人]
+DOCS_DIR: Path = ROOT_DIR / "docs"
+
+# 工程基础设施目录
+SCRIPTS_DIR: Path = ROOT_DIR / "scripts"
+
+# ==========================
+# 定义工具的元目录数据， 工具自身的日志
+# ========================
+META_DIR: Path = ROOT_DIR / ".odp-meta"
+META_LOGGING_DIR: Path = META_DIR / "logs"
+
+# --- D3 新增：数据集与配置相关路径 ---
+DATA_RAW_DIR: Path = DATA_DIR / "raw"
+DATA_PROCESSED_DIR: Path = DATA_DIR / "processed"
+CONFIG_DATASETS_DIR: Path = CONFIGS_DIR / "datasets"
+
+# ultralytics 数据集的基准目录 — YAML 中的 path 字段由 ultralytics 从此目录解析
+# 见 ultralytics.data.utils.check_det_dataset: path = (DATASETS_DIR / path).resolve()
+ULTRALYTICS_DATASETS_DIR: Path = APP_DIR / "datasets"
+
+# --- D4 新增：data_validation 相关路径 ---
+VALIDATION_RUNS_DIR: Path = RUNS_DIR / "data_validation"
+
+# --- D5 新增：运行配置目录 (跟 D3 立的 DATASET_CONFIGS_DIR 语义不同) ---
+# DATASET_CONFIGS_DIR: 描述【数据】的 yaml (odp-transform 产出)
+# RUNTIME_CONFIGS_DIR: 描述【跑法】的 yaml (runtime_config 子系统产出)
+RUNTIME_CONFIGS_DIR: Path = CONFIGS_DIR / "runtime"
+
+
+def validation_run_dir(run_id: str) -> Path:
+    return VALIDATION_RUNS_DIR / run_id
+
+
+def dataset_yaml_path(name: str) -> Path:
+    """根据数据集名称返回其配置 yaml 路径"""
+    return CONFIG_DATASETS_DIR / f"{name}.yaml"
+
+
+def runtime_config_path(name: str) -> Path:
+    """返回某个运行配置文件路径: <CONFIGS_DIR>/runtime/<name>.yaml
+
+    Args:
+        name: 配置名 (如 "train" / "val"), 不带 .yaml 后缀
+
+    Returns:
+        Path 对象
+
+    用法:
+        train_yaml = runtime_config_path("train")
+        # → <APP_DIR>/configs/runtime/train.yaml
+    """
+    return RUNTIME_CONFIGS_DIR / f"{name}.yaml"
+
+# 对外暴露的要初始化的目录列表
+def get_dirs_to_initialize() -> List[Path]:
+    """
+    返回项目启动时需要确保存在的所有目录列表
+    :return: 所有需要初始化的目录路径列表
+    """
+    return [
+        DATA_DIR,
+        MODELS_DIR,
+        RUNS_DIR,
+        PRETRAINED_MODELS_DIR,
+        CHECKPOINTS_DIR,
+        RAW_DATA_DIR,
+        TRAIN_IMAGES_DIR,
+        TEST_IMAGES_DIR,
+        VAL_IMAGES_DIR,
+        TRAIN_LABELS_DIR,
+        TEST_LABELS_DIR,
+        VAL_LABELS_DIR,
+        CONFIGS_DIR,
+        LOGGING_DIR,
+        UNIT_TEST_DIR,
+        SCRIPTS_DIR,
+        DOCS_DIR,
+        META_LOGGING_DIR,
+        DATA_RAW_DIR,
+        DATA_PROCESSED_DIR,
+        CONFIG_DATASETS_DIR,
+        VALIDATION_RUNS_DIR,
+        RUNTIME_CONFIGS_DIR,
+    ]
+
+def get_dirs_to_reset() -> List[Path]:
+    """
+    返回项目启动时需要确保存在的所有目录列表
+    :return: 所有需要初始化的目录路径列表
+    """
+    return [
+        # 划分后的数据集
+        TRAIN_DIR, VAL_DIR, TEST_DIR,
+        # 训练的产物
+        RUNS_DIR, CHECKPOINTS_DIR,
+        # 验证报告
+        VALIDATION_RUNS_DIR,
+        # 端私有资产
+        LOGGING_DIR,
+    ]
+
+
+# =============================================
+# reset工具 永远不能删除的目录
+# ============================================
+PROTECTED_DIRS: tuple[Path, ...] = (
+    ROOT_DIR,
+    ROOT_DIR / "apps",
+    ROOT_DIR / "packages",
+    APP_DIR,
+    APP_DIR / "src",
+    SCRIPTS_DIR,
+    DOCS_DIR,
+    UNIT_TEST_DIR,
+    CONFIGS_DIR,
+    ROOT_DIR / ".git",
+    ROOT_DIR / ".odp-workspace",
+    META_DIR,
+    META_LOGGING_DIR,
+)
+
+def is_protected(path: Path) -> bool:
+    """
+    检查路径是否再保护清单中
+    - 路径是不是 受保护目录本身
+    - 路径是不是 受保护目录的祖先，因为删了祖先会把后代都删了
+    """
+    path = path.resolve(strict=False)
+    for protected in PROTECTED_DIRS:
+        protected_resolved = protected.resolve(strict=False)
+        if path == protected_resolved:
+            return True
+        if protected_resolved.is_relative_to(path):
+            return True
+    return False
+
+
+
+
+
+if __name__ == "__main__":
+    print(f"ROOT_DIR (workspace) = {ROOT_DIR}")
+    print(f"APP_DIR (platform) = {APP_DIR}")
+
+    print(f"需要初始化的目录共有{len(get_dirs_to_initialize())}个")
+    for d in get_dirs_to_initialize():
+        print(f"  - {d.relative_to(ROOT_DIR)}")

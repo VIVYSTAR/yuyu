@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.class
+.venv/
+venv/
+
+# 你们项目特有的忽略项
+data/
+models/
+runs/
+logs/
+.idea/
+.vscode/
+logging/
+configs/
+
+# 临时文档
+D3-*.md
+D4-*.md
+D5-*.md
+ODPlatform_ADR.md
+D6-*.md
